@@ -148,9 +148,9 @@ class PaymentService
 		
         $this->transactionLogData->saveTransaction($transactionData);
         
-        if(in_array($requestData['payment_type'],['INVOICE_START','DIRECT_DEBIT_SEPA','CASHPAYMENT', 'GUARANTEED_INVOICE', 'GUARANTEED_DIRECT_DEBIT_SEPA']) || ($requestData['payment_type'] == 'CREDITCARD' && $this->paymentHelper->getNovalnetConfig('novalnet_cc_3d') != 'true' && $this->paymentHelper->getNovalnetConfig('novalnet_cc_3d_fraudcheck') != 'true'))
+        if(in_array($nnPaymentData['payment_type'],['INVOICE_START','DIRECT_DEBIT_SEPA','CASHPAYMENT', 'GUARANTEED_INVOICE', 'GUARANTEED_DIRECT_DEBIT_SEPA']) || ($nnPaymentData['payment_type'] == 'CREDITCARD' && $this->paymentHelper->getNovalnetConfig('novalnet_cc_3d') != 'true' && $this->paymentHelper->getNovalnetConfig('novalnet_cc_3d_fraudcheck') != 'true'))
         {
-            $this->sendPostbackCall($requestData);
+            $this->sendPostbackCall($nnPaymentData);
         }
      }
      
