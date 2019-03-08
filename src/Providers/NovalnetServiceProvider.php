@@ -217,7 +217,7 @@ class NovalnetServiceProvider extends ServiceProvider
 						} elseif ($paymentKey == 'NOVALNET_CC') { # Credit Card
                             $encodedKey = base64_encode('vendor='.$paymentHelper->getNovalnetConfig('novalnet_vendor_id').'&product='.$paymentHelper->getNovalnetConfig('novalnet_product_id').'&server_ip='.$paymentHelper->getServerAddress().'&lang='.$sessionStorage->getLocaleSettings()->language);
                             $nnIframeSource = 'https://secure.novalnet.de/cc?api=' . $encodedKey;
-                            $content = $twig->render('Novalnet::NOVALNET_CC', [
+                            $content = $twig->render('Novalnet::PaymentForm.NOVALNET_CC', [
 								'nnCcFormUrl' 			=> $nnIframeSource,
 								'nnPaymentProcessUrl' 	=> $paymentService->getProcessPaymentUrl(),
 								'paymentMopKey'     	=>  $paymentKey,
@@ -231,7 +231,7 @@ class NovalnetServiceProvider extends ServiceProvider
 							} else {
 								$billingAddressId = $basket->customerInvoiceAddressId;
 								$address = $addressRepository->findAddressById($billingAddressId);
-								$content = $twig->render('Novalnet::'. $paymentKey, [
+								$content = $twig->render('Novalnet::PaymentForm.'. $paymentKey, [
 									'nnPaymentProcessUrl' 	=> $paymentService->getProcessPaymentUrl(),
 									'paymentMopKey'     	=>  $paymentKey,
 									'nnGuaranteeStatus' 	=> !empty($address->companyName) ? true : false
