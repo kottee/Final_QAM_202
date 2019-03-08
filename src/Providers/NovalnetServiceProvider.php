@@ -205,7 +205,8 @@ class NovalnetServiceProvider extends ServiceProvider
 						$paymentKey = $paymentHelper->getPaymentKeyByMop($event->getMop());
 						$basket = $basketRepository->load();
 						$guaranteeStatus = $paymentService->getGuaranteeStatus($basket, $paymentKey);
-						if ($paymentService->isRedirectPayment) { # Redirection payments
+				$redirect = $paymentService->isRedirectPayment($paymentKey);		
+			    if ($redirect) { # Redirection payments
 							$serverRequestData = $paymentService->getRequestParameters($basketRepository->load(), $paymentKey);
                             $sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
                             $sessionStorage->getPlugin()->setValue('nnPaymentUrl', $serverRequestData['url']);
