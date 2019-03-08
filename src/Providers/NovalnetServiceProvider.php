@@ -25,6 +25,7 @@ use Plenty\Modules\Basket\Events\BasketItem\AfterBasketItemAdd;
 use Plenty\Modules\Payment\Method\Contracts\PaymentMethodContainer;
 use Plenty\Modules\Basket\Contracts\BasketRepositoryContract;
 use Plenty\Modules\Payment\Method\Contracts\PaymentMethodRepositoryContract;
+use Plenty\Modules\Account\Address\Contracts\AddressRepositoryContract;
 use Plenty\Modules\Frontend\Session\Storage\Contracts\FrontendSessionStorageFactoryContract;
 use Plenty\Plugin\Log\Loggable;
 use Novalnet\Helper\PaymentHelper;
@@ -81,6 +82,7 @@ class NovalnetServiceProvider extends ServiceProvider
      */
     public function boot( Dispatcher $eventDispatcher,
                           PaymentHelper $paymentHelper,
+			  AddressRepositoryContract $addressRepository,
                           PaymentService $paymentService,
                           BasketRepositoryContract $basketRepository,
                           PaymentMethodContainer $payContainer,
@@ -198,7 +200,7 @@ class NovalnetServiceProvider extends ServiceProvider
         
         // Listen for the event that gets the payment method content
         $eventDispatcher->listen(GetPaymentMethodContent::class,
-                function(GetPaymentMethodContent $event) use($paymentHelper, $paymentService, $basketRepository, $paymentMethodService, $sessionStorage, $twig)
+                function(GetPaymentMethodContent $event) use($paymentHelper, $addressRepository, $paymentService, $basketRepository, $paymentMethodService, $sessionStorage, $twig)
                 {
                     if($paymentHelper->getPaymentKeyByMop($event->getMop()))
                     {
@@ -228,7 +230,7 @@ class NovalnetServiceProvider extends ServiceProvider
 								$content = $guaranteeStatus['error'];
 							} else {
 								$billingAddressId = $basket->customerInvoiceAddressId;
-								$address = $this->addressRepository->findAddressById($billingAddressId);
+								$address = $addressRepository->findAddressById($billingAddressId);
 								$content = $twig->render('Novalnet::PaymentForm.'.$paymentKey, [
 									'nnPaymentProcessUrl' 	=> $paymentService->getProcessPaymentUrl(),
 									'paymentMopKey'     	=>  $paymentKey,
@@ -245,7 +247,7 @@ class NovalnetServiceProvider extends ServiceProvider
 							$sessionStorage->getPlugin()->setValue('nnPaymentData', array_merge($serverRequestData['data'], $responseData));
 							$isPaymentSuccess = isset($responseData['status']) && $responseData['status'] == '100';
 							$notificationType = $isPaymentSuccess ? 'success' : 'error';
-							$this->paymentService->pushNotification($notificationType, $this->paymentHelper->getNovalnetStatusText($responseData));
+							$paymentService->pushNotification($notificationType, $paymentHelper->getNovalnetStatusText($responseData));
 							$content = '';
 							$contentType = 'continue';
 						}
