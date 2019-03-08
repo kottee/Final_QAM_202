@@ -112,7 +112,7 @@ class PaymentController extends Controller
 	 */
 	public function paymentResponse() {
 		$responseData = $this->request->all();
-		$this->paymentService->pushNotification($responseData);		
+		$this->paymentService->pushNotification('sucess', $responseData['status_desc']);		
 		$responseData['test_mode'] = $this->paymentHelper->decodeData($responseData['test_mode'], $responseData['uniqid']);
 		$responseData['amount']    = $this->paymentHelper->decodeData($responseData['amount'], $responseData['uniqid']) / 100;
 		$paymentRequestData = $this->sessionStorage->getPlugin()->getValue('nnPaymentData');
