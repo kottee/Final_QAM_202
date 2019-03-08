@@ -112,7 +112,9 @@ class PaymentController extends Controller
 	 */
 	public function paymentResponse() {
 		$responseData = $this->request->all();
-		$this->paymentService->pushNotification('sucess', $responseData['status_desc']);		
+		$isPaymentSuccess = isset($responseData['status']) && in_array($responseData['status'], ['90','100']);
+		$notificationType = $isPaymentSuccess ? 'success' : 'error';
+		$this->paymentService->pushNotification($notificationType, $this->paymentHelper->getNovalnetStatusText($responseData));		
 		$responseData['test_mode'] = $this->paymentHelper->decodeData($responseData['test_mode'], $responseData['uniqid']);
 		$responseData['amount']    = $this->paymentHelper->decodeData($responseData['amount'], $responseData['uniqid']) / 100;
 		$paymentRequestData = $this->sessionStorage->getPlugin()->getValue('nnPaymentData');
@@ -189,9 +191,9 @@ class PaymentController extends Controller
 		$response = $this->paymentHelper->executeCurl($serverRequestData['data'], $serverRequestData['url']);
 		$responseData = $this->paymentHelper->convertStringToArray($response['response'], '&');
 		$responseData['payment_id'] = (!empty($responseData['payment_id'])) ? $responseData['payment_id'] : $responseData['key'];
-		$this->paymentService->pushNotification($responseData);
 		$isPaymentSuccess = isset($responseData['status']) && $responseData['status'] == '100';
-
+		$notificationType = $isPaymentSuccess ? 'success' : 'error';
+		$this->paymentService->pushNotification($notificationType, $this->paymentHelper->getNovalnetStatusText($responseData));
 		if($isPaymentSuccess)
 		{			
 			if(isset($serverRequestData['data']['pan_hash']))
