@@ -69,7 +69,7 @@ class NovalnetCashPaymentMethod extends PaymentMethodService
      */
     public function getName():string
     {   $name = trim($this->configRepository->get('Novalnet.novalnet_cashpayment_payment_name'))
-        return $name ? $name : $this->paymentHelper->getTranslatedText('novalnet_cashpayment');
+        return ($name ? $name : $this->paymentHelper->getTranslatedText('novalnet_cashpayment'));
     }
 
     /**
@@ -96,7 +96,7 @@ class NovalnetCashPaymentMethod extends PaymentMethodService
      */
     public function getDescription():string
     {   $description = trim($this->configRepository->get('Novalnet.novalnet_cashpayment_description'))
-        return $description ? $description : $this->paymentHelper->getTranslatedText('cashpayment_payment_description');
+        return ($description ? $description : $this->paymentHelper->getTranslatedText('cashpayment_payment_description'));
     }
 
     /**
