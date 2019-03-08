@@ -79,9 +79,6 @@ class NovalnetCcPaymentMethod extends PaymentMethodService
      */
     public function getIcon():string
     {
-        $log = $this->configRepository->get('Novalnet.novalnet_creditcard_allowedcardtypes');
-      
-        $this->getLogger(__METHOD__)->error('123', $log);
         $logoUrl = $this->configRepository->get('Novalnet.novalnet_cc_payment_logo');
         if($logoUrl == 'images/cc.png'){
             /** @var Application $app */
