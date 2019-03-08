@@ -95,7 +95,8 @@ class NovalnetCashPaymentMethod extends PaymentMethodService
      * @return string
      */
     public function getDescription():string
-    {   $description = trim($this->configRepository->get('Novalnet.novalnet_cashpayment_description'))
+    {   
+        $description = trim($this->configRepository->get('Novalnet.novalnet_cashpayment_description'));
         return ($description ? $description : $this->paymentHelper->getTranslatedText('cashpayment_payment_description'));
     }
 
