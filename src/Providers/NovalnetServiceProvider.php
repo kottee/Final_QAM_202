@@ -242,7 +242,9 @@ class NovalnetServiceProvider extends ServiceProvider
 							$responseData = $paymentHelper->convertStringToArray($response['response'], '&');
 							$responseData['payment_id'] = (!empty($responseData['payment_id'])) ? $responseData['payment_id'] : $responseData['key'];
 							$sessionStorage->getPlugin()->setValue('nnPaymentData', array_merge($serverRequestData['data'], $responseData));
-							$paymentService->pushNotification($responseData);
+							$isPaymentSuccess = isset($responseData['status']) && $responseData['status'] == '100';
+							$notificationType = $isPaymentSuccess ? 'success' : 'error';
+							$this->paymentService->pushNotification($notificationType, $this->paymentHelper->getNovalnetStatusText($responseData));
 							$content = '';
 							$contentType = 'continue';
 						}
