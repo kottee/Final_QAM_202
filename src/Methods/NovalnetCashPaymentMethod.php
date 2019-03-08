@@ -68,7 +68,7 @@ class NovalnetCashPaymentMethod extends PaymentMethodService
      * @return string
      */
     public function getName():string
-    {   $name = trim($this->configRepository->get('Novalnet.novalnet_cashpayment_payment_name'))
+    {   $name = trim($this->configRepository->get('Novalnet.novalnet_cashpayment_payment_name'));
         return ($name ? $name : $this->paymentHelper->getTranslatedText('novalnet_cashpayment'));
     }
 
