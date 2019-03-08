@@ -149,7 +149,7 @@ class PaymentController extends Controller
 			$serverRequestData['data']['iban'] = $requestData['nn_sepa_iban'];	
 		}            
 			
-		$guranteeStatus = $this->paymentService->getGuaranteeStatus($this->basketRepository->load(), $requestData['paymentKey']);                        
+		$guaranteeStatus = $this->paymentService->getGuaranteeStatus($this->basketRepository->load(), $requestData['paymentKey']);                        
 			
 		if($guaranteeStatus['status'])
 		{		   
