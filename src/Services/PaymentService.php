@@ -447,7 +447,7 @@ class PaymentService
                 $paymentRequestData['on_hold'] = '1';
         }
 
-        if(isRedirectPayment($paymentKey))
+        if($this->isRedirectPayment($paymentKey))
         {
 			$paymentRequestData['uniqid'] = $this->paymentHelper->getUniqueId();
             $this->encodePaymentData($paymentRequestData);
