@@ -70,7 +70,7 @@ class NovalnetInvoicePaymentMethod extends PaymentMethodService
     public function getName():string
     {   
 		$name = trim($this->configRepository->get('Novalnet.novalnet_invoice_payment_name'));
-        return 9$name ? $name : $this->paymentHelper->getTranslatedText('novalnet_invoice'));
+        return ($name ? $name : $this->paymentHelper->getTranslatedText('novalnet_invoice'));
     }
 
     /**
