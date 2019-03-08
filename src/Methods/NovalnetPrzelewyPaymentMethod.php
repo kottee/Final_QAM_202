@@ -96,7 +96,7 @@ class NovalnetPrzelewyPaymentMethod extends PaymentMethodService
      */
     public function getDescription():string
     {
-		$description = trim($this->configRepository->get('Novalnet.novalnet_przelewy_description'))
+		$description = trim($this->configRepository->get('Novalnet.novalnet_przelewy_description'));
         return ($description ? $description : $this->paymentHelper->getTranslatedText('redirectional_payment_description'));
     }
 
