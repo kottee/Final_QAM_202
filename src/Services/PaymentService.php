@@ -148,7 +148,7 @@ class PaymentService
 		
         $this->transactionLogData->saveTransaction($transactionData);
         
-        if(!$this->isRedirectPayment($paymentKey)) {
+        if(!($this->isRedirectPayment($paymentKey))) {
             $this->sendPostbackCall($nnPaymentData);
         }
      }
