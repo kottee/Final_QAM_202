@@ -372,7 +372,7 @@ class PaymentService
         if(is_numeric($referrerId = $this->paymentHelper->getNovalnetConfig('referrer_id'))) {
             $paymentRequestData['referrer_id'] = $referrerId;
         }
-        $url = $this->getPaymentData($paymentKeyLower, $paymentRequestData);
+        $url = $this->getPaymentData($paymentKey, $paymentRequestData);
 
         return [
             'data' => $paymentRequestData,
@@ -388,13 +388,13 @@ class PaymentService
      */
     public function getPaymentData($paymentKey, &$paymentRequestData )
     {
-		$url = $this->getpaymentUrl(strtoupper($paymentKey));
-		if(in_array($paymentKey, ['novalnet_cc', 'novalnet_sepa', 'novalnet_paypal', 'novalnet_invoice'])) {
-			$onHoldLimit = $this->paymentHelper->getNovalnetConfig($paymentKey . '_on_hold');
+		$url = $this->getpaymentUrl($paymentKey);
+		if(in_array($paymentKey, ['NOVALNET_CC', 'NOVALNET_SEPA', 'NOVALNET_PAYPAL', 'NOVALNET_INVOICE'])) {
+			$onHoldLimit = $this->paymentHelper->getNovalnetConfig(strtolower($paymentKey) . '_on_hold');
             if(is_numeric($onHoldLimit) && $paymentRequestData['amount'] >= $onHoldLimit) {
                 $paymentRequestData['on_hold'] = '1';
             }
-            if($paymentKey == 'novalnet_cc')
+            if($paymentKey == 'NOVALNET_CC')
 			{
 				$onHoldLimit = $this->paymentHelper->getNovalnetConfig('novalnet_cc_on_hold');
 				if($this->config->get('Novalnet.novalnet_cc_3d') == 'true' || $this->config->get('Novalnet.novalnet_cc_3d_fraudcheck') == 'true' ) {
@@ -402,10 +402,9 @@ class PaymentService
 						$paymentRequestData['cc_3d'] = '1';
 					}
 					$url = NovalnetConstants::CC3D_PAYMENT_URL;
-					array_push($this->redirectPayment, 'NOVALNET_CC');
 				}
 			}
-			else if($paymentKey == 'novalnet_sepa')
+			else if($paymentKey == 'NOVALNET_SEPA')
 			{
 				$dueDate = $this->paymentHelper->getNovalnetConfig('novalnet_sepa_due_date');
 				if(is_numeric($dueDate) && $dueDate >= 2 && $dueDate <= 14) {
@@ -413,7 +412,7 @@ class PaymentService
 				}
 				
 			}
-			else if($paymentKey == 'novalnet_invoice')
+			else if($paymentKey == 'NOVALNET_INVOICE')
 			{
 				$paymentRequestData['invoice_type'] = 'INVOICE';
 				$invoiceDueDate = $this->paymentHelper->getNovalnetConfig('novalnet_invoice_due_date');
@@ -422,11 +421,11 @@ class PaymentService
 				}
 			}
 		}
-        else if($paymentKey == 'novalnet_prepayment')
+        else if($paymentKey == 'NOVALNET_PREPAYMENT')
         {
             $paymentRequestData['invoice_type'] = 'PREPAYMENT';
         }
-        else if($paymentKey == 'novalnet_cashpayment')
+        else if($paymentKey == 'NOVALNET_CASHPAYMENT')
         {
             $cashpaymentDueDate = $this->paymentHelper->getNovalnetConfig('novalnet_cashpayment_due_date');
             if(is_numeric($cashpaymentDueDate)) {
@@ -441,6 +440,7 @@ class PaymentService
             $paymentRequestData['implementation'] = 'ENC';
             $paymentRequestData['return_url'] = $paymentRequestData['error_return_url'] = $this->getReturnPageUrl();
             $paymentRequestData['return_method'] = $paymentRequestData['error_return_method'] = 'POST';
+	    $paymentRequestData['user_variable_0'] = $this->webstoreHelper->getCurrentWebstoreConfiguration()->domainSsl;
         }
         
         return $url;
@@ -478,7 +478,7 @@ class PaymentService
      * @param string $paymentKey
      */
     public function isRedirectPayment($paymentKey) {
-		return (bool) (in_array($paymentKey, ['NOVALNET_SOFORT', 'NOVALNET_PAYPAL', 'NOVALNET_IDEAL', 'NOVALNET_EPS', 'NOVALNET_GIROPAY', 'NOVALNET_PRZELEWY']) || ($paymentKey == 'NOVALNET_CC' && ($this->config->get('Novalnet.novalnet_cc_3d') == 'true' || $this->config->get('Novalnet.novalnet_cc_3d_fraudcheck') == 'true' )));
+		return (bool) (in_array($paymentKey, $this->redirectPayment) || ($paymentKey == 'NOVALNET_CC' && ($this->config->get('Novalnet.novalnet_cc_3d') == 'true' || $this->config->get('Novalnet.novalnet_cc_3d_fraudcheck') == 'true' )));
 	}
 
     /**
