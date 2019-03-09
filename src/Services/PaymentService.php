@@ -644,17 +644,20 @@ class PaymentService
     {
         // Get payment name in lowercase
         $paymentKeyLow = strtolower((string) $paymentKey);
+        $guaranteePayment = $this->config->get('Novalnet.'.$paymentKeyLow.'_payment_guarantee_active');
         $guarantee = false;
-        if ($this->config->get('Novalnet.'.$paymentKeyLow.'_payment_guarantee_active') == 'true') {
+        if ($guaranteePayment == 'true') {
             // Get guarantee minimum amount value
             $minimumAmount = $this->paymentHelper->getNovalnetConfig($paymentKeyLow . '_guarantee_min_amount');
             $minimumAmount = ((preg_match('/^[0-9]*$/', $minimumAmount) && $minimumAmount >= '999')  ? $minimumAmount : '999');
-            $amount        = $this->paymentHelper->ConvertAmountToSmallerUnit($basket->basketAmount);
+            $amount        = (sprintf('%0.2f', $basket->basketAmount) * 100);
 
-            $billingAddress = $this->addressRepository->findAddressById($basket->customerInvoiceAddressId);
+            $billingAddressId = $basket->customerInvoiceAddressId;
+            $billingAddress = $this->addressRepository->findAddressById($billingAddressId);
             $customerBillingIsoCode = strtoupper($this->countryRepository->findIsoCode($billingAddress->countryId, 'iso_code_2'));
 
-            $shippingAddress = $this->addressRepository->findAddressById($basket->customerShippingAddressId);
+            $shippingAddressId = $basket->customerShippingAddressId;
+            $shippingAddress = $this->addressRepository->findAddressById($shippingAddressId);
             $customerShippingIsoCode = strtoupper($this->countryRepository->findIsoCode($shippingAddress->countryId, 'iso_code_2'));
 
             // Billing address
@@ -672,17 +675,40 @@ class PaymentService
 				'country'        => $customerShippingIsoCode,
 			];
             // Check guarantee payment
-            if ( ! in_array( $customerBillingIsoCode, array( 'AT', 'DE', 'CH' ), true ) ) {
-				$error = $this->paymentHelper->getTranslatedText('guarantee_country_error');
-			} elseif($basket->currency != 'EUR') {
-				$error = $this->paymentHelper->getTranslatedText('guarantee_currency_error');
-			} elseif($billingAddress !== $shippingAddress) {
-				$error = $this->paymentHelper->getTranslatedText('guarantee_address_error');
-			} elseif((int) $amount >= (int) $minimumAmount) {
-				$error = $this->paymentHelper->getTranslatedText('guarantee_minimum_amount_error') . $minimumAmount;	
+            if (((int) $amount >= (int) $minimumAmount && in_array(
+                $customerBillingIsoCode,
+                [
+                 'DE',
+                 'AT',
+                 'CH',
+                ]
+            ) && $basket->currency == 'EUR' && ($billingAddress === $shippingAddress))
+            ) {
+                $guarantee = [
+					'status' => true,
+					'error'  => ''
+                ];
+            } elseif ($this->config->get('Novalnet.'.$paymentKeyLow.'_payment_guarantee_force_active') == 'true') {   
+                $guarantee = [
+					'status' => false,
+					'error'  => ''
+                ];
+            } else {
+				if ( ! in_array( $customerBillingIsoCode, array( 'AT', 'DE', 'CH' ), true ) ) {
+					$error = $this->paymentHelper->getTranslatedText('guarantee_country_error');					
+				} elseif ( $basket->currency !== 'EUR' ) {
+					$error = $this->paymentHelper->getTranslatedText('guarantee_currency_error');					
+				} elseif ( ! empty( array_diff( $billingAddress, $shippingAddress ) ) ) {
+					$error = $this->paymentHelper->getTranslatedText('guarantee_address_error');				
+				} elseif ( (int) $amount < (int) $minimumAmount ) {
+					$error = $this->paymentHelper->getTranslatedText('guarantee_minimum_amount_error');				
+				}
+				$guarantee = [
+					'status' => true,
+					'error'  => $error
+                ];
 			}
-			
         }//end if
+        return $guarantee;
     }
-    return $guarantee;	
 }
