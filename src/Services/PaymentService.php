@@ -478,7 +478,7 @@ class PaymentService
      * @param string $paymentKey
      */
     public function isRedirectPayment($paymentKey) {
-		return (bool) in_array($paymentKey, $this->redirectPayment);
+		return (bool) (in_array($paymentKey, ['NOVALNET_SOFORT', 'NOVALNET_PAYPAL', 'NOVALNET_IDEAL', 'NOVALNET_EPS', 'NOVALNET_GIROPAY', 'NOVALNET_PRZELEWY']) || ($paymentKey == 'NOVALNET_CC' && ($this->config->get('Novalnet.novalnet_cc_3d') == 'true' || $this->config->get('Novalnet.novalnet_cc_3d_fraudcheck') == 'true' )));
 	}
 
     /**
