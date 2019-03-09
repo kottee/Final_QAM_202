@@ -707,4 +707,12 @@ class PaymentHelper
 		$this->paymentRepository->updatePayment($payment);
 		}	   
     }
+	
+	public function dateFormatter($days) {
+		return date( 'Y-m-d', strtotime( date( 'y-m-d' ) . '+ ' . $days . ' days' ) );
+	}
+	
+	public function ConvertAmountToSmallerUnit($amount) {
+		return sprintf('%0.2f', $amount) * 100;
+	}
 }
