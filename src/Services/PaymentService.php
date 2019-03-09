@@ -276,24 +276,27 @@ class PaymentService
       */
     public function getCashPaymentComments($requestData)
     {
-        $comments = $this->paymentHelper->getTranslatedText('cashpayment_expire_date') . $requestData['cashpayment_due_date'] . PHP_EOL;
+                $comments = $this->paymentHelper->getTranslatedText('cashpayment_expire_date') . $requestData['cashpayment_due_date'] . PHP_EOL;
+        $comments .= PHP_EOL . PHP_EOL . $this->paymentHelper->getTranslatedText('cashpayment_near_you') . PHP_EOL . PHP_EOL . PHP_EOL;
 
         $strnos = 0;
-        
-        if ( isset( $requestData['nearest_store_title_1'] ) ) {
-			$comments .= PHP_EOL . PHP_EOL . $this->paymentHelper->getTranslatedText('cashpayment_near_you') . PHP_EOL . PHP_EOL . PHP_EOL;
-			$store_values = preg_filter( '/^nearest_store_(.*)_(.*)$/', '$2', array_keys( $requestData ) );
-			if ( $store_values ) {
-				$count     = max( $store_values );
-				for ( $i = 1; $i <= $count; $i++ ) {
-					$comments .= $requestData[ 'nearest_store_title_' . $i ] .PHP_EOL;
-					$comments .= $requestData[ 'nearest_store_street_' . $i ] .PHP_EOL;
-					$comments .= $requestData[ 'nearest_store_city_' . $i ] .PHP_EOL;
-					$comments .= $requestData[ 'nearest_store_zipcode_' . $i ] .PHP_EOL;
-					$comments .= $requestData[ 'nearest_store_country_' . $i ] . PHP_EOL;
-				}
-			}
-		}
+        foreach($requestData as $key => $val)
+        {
+            if(strpos($key, 'nearest_store_title') !== false)
+            {
+                $strnos++;
+            }
+        }
+
+        for($i = 1; $i <= $strnos; $i++)
+        {
+            $countryName = !empty($requestData['nearest_store_country_' . $i]) ? $requestData['nearest_store_country_' . $i] : '';
+            $comments .= $requestData['nearest_store_title_' . $i] . PHP_EOL;
+            $comments .= $countryName . PHP_EOL;
+            $comments .= $this->paymentHelper->checkUtf8Character($requestData['nearest_store_street_' . $i]) . PHP_EOL;
+            $comments .= $requestData['nearest_store_city_' . $i] . PHP_EOL;
+            $comments .= $requestData['nearest_store_zipcode_' . $i] . PHP_EOL . PHP_EOL;
+        }
 
         return $comments;
     }
@@ -433,7 +436,7 @@ class PaymentService
 
         if($this->isRedirectPayment($paymentKey))
         {
-			$paymentRequestData['uniqid'] = $this->paymentHelper->getUniqueId();
+	    $paymentRequestData['uniqid'] = $this->paymentHelper->getUniqueId();
             $this->encodePaymentData($paymentRequestData);
             $paymentRequestData['implementation'] = 'ENC';
             $paymentRequestData['return_url'] = $paymentRequestData['error_return_url'] = $this->getReturnPageUrl();
@@ -475,7 +478,7 @@ class PaymentService
      * @param string $paymentKey
      */
     public function isRedirectPayment($paymentKey) {
-		return (bool) in_array($paymentKey, $thhis->redirectPayment);
+		return (bool) in_array($paymentKey, $this->redirectPayment);
 	}
 
     /**
