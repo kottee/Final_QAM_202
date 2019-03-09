@@ -654,7 +654,6 @@ class PaymentService
             $billingAddress = $this->addressRepository->findAddressById($basket->customerInvoiceAddressId);
             $customerBillingIsoCode = strtoupper($this->countryRepository->findIsoCode($billingAddress->countryId, 'iso_code_2'));
 
-            $shippingAddressId = $basket->customerShippingAddressId;
             $shippingAddress = $this->addressRepository->findAddressById($basket->customerShippingAddressId);
             $customerShippingIsoCode = strtoupper($this->countryRepository->findIsoCode($shippingAddress->countryId, 'iso_code_2'));
 
@@ -701,6 +700,5 @@ class PaymentService
                 ];
 			}
         }//end if
-        return $guarantee;
     }
 }
