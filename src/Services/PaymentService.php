@@ -681,24 +681,8 @@ class PaymentService
 			} elseif((int) $amount >= (int) $minimumAmount) {
 				$error = $this->paymentHelper->getTranslatedText('guarantee_minimum_amount_error') . $minimumAmount;	
 			}
-			if(!empty($error)) {
-				if($this->config->get('Novalnet.'.$paymentKeyLow.'_payment_guarantee_force_active') == 'true') {
-					return [
-						'status' => false,
-						'error'  => ''
-					];
-				} else {
-					return [
-						'status' => true,
-						'error'  => ''
-					];
-				}
-			} else {
-				return [
-					'status' => true,
-					'error'  => $error
-                ];
-			}
+			
         }//end if
     }
+    return $guarantee;	
 }
