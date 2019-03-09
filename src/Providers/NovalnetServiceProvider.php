@@ -208,7 +208,7 @@ class NovalnetServiceProvider extends ServiceProvider
 						$basket = $basketRepository->load();
 						$guaranteeStatus = $paymentService->getGuaranteeStatus($basket, $paymentKey);
 				$redirect = $paymentService->isRedirectPayment($paymentKey);		
-			    if ($redirect) { # Redirection payments
+			    if ($redirect && $paymentKey != 'NOVALNET_CC') { # Redirection payments
 							$serverRequestData = $paymentService->getRequestParameters($basketRepository->load(), $paymentKey);
                             $sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
                             $sessionStorage->getPlugin()->setValue('nnPaymentUrl', $serverRequestData['url']);
