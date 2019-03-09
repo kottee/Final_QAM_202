@@ -309,7 +309,7 @@ class PaymentService
      *
      * @return array
      */
-    public function getRequestParameters(Basket $basket, $paymentKey = '')
+    public function getRequestParameters(Basket $basket, $paymentKey)
     {
         $billingAddressId = $basket->customerInvoiceAddressId;
         $address = $this->addressRepository->findAddressById($billingAddressId);
