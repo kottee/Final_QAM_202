@@ -437,14 +437,6 @@
                   "defaultValue":""
                }
             },
-		 "novalnet_allowedCountries":{  
-               "type":"inputText",
-               "required":false,
-               "label":"Config.Country",
-               "options":{  
-                  "defaultValue":"AT,DE,CH"
-               }
-            },
             "novalnet_invoice_payment_logo":{  
                "type":"inputFile",
                "required":false,
