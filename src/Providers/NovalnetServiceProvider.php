@@ -225,7 +225,7 @@ class NovalnetServiceProvider extends ServiceProvider
                                        ]);
                             $contentType = 'htmlContent';
 						} elseif ($paymentKey == 'NOVALNET_SEPA' || $guaranteeStatus['status']) { # SEPA and guarantee payments							
-							if($guaranteeStatus['status'] && $guaranteeStatus['error'] != '') {
+							/**if($guaranteeStatus['status'] && $guaranteeStatus['error'] != '') {
 								$contentType = 'errorCode';
 								$content = $guaranteeStatus['error'];
 							} else {
@@ -237,7 +237,7 @@ class NovalnetServiceProvider extends ServiceProvider
 									'nnGuaranteeStatus' 	=> !empty($address->companyName) ? true : false
 								]);
 								$contentType = 'htmlContent';
-							}
+							} **/
 						} else {
 							$serverRequestData = $paymentService->getRequestParameters($basketRepository->load(), $paymentKey);
 							$sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
