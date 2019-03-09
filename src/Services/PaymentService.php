@@ -309,7 +309,7 @@ class PaymentService
      *
      * @return array
      */
-    public function getRequestParameters(Basket $basket, $paymentKey)
+    public function getRequestParameters(Basket $basket, $paymentKey = '')
     {
         $billingAddressId = $basket->customerInvoiceAddressId;
         $address = $this->addressRepository->findAddressById($billingAddressId);
@@ -440,7 +440,7 @@ class PaymentService
                 $paymentRequestData['on_hold'] = '1';
         }
 
-        if(isRedirectPayment($paymentKey))
+        elseif(isRedirectPayment($paymentKey))
         {
 			$paymentRequestData['uniqid'] = $this->paymentHelper->getUniqueId();
             $this->encodePaymentData($paymentRequestData);
