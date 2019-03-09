@@ -402,7 +402,7 @@ class PaymentService
 						$paymentRequestData['cc_3d'] = '1';
 					}
 					$url = NovalnetConstants::CC3D_PAYMENT_URL;
-					array_push($thhis->redirectPayment, 'NOVALNET_CC');
+					array_push($this->redirectPayment, 'NOVALNET_CC');
 				}
 			}
 			else if($paymentKey == 'novalnet_sepa')
