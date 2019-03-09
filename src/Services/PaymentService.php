@@ -71,6 +71,8 @@ class PaymentService
      * @var TransactionLogData
      */
     private $transactionLogData;
+    
+    private $redirectPayment = ['NOVALNET_SOFORT', 'NOVALNET_PAYPAL', 'NOVALNET_IDEAL', 'NOVALNET_EPS', 'NOVALNET_GIROPAY', 'NOVALNET_PRZELEWY'];
 
     /**
      * Constructor.
@@ -127,9 +129,7 @@ class PaymentService
         $nnPaymentData['order_no']       = $this->sessionStorage->getPlugin()->getValue('nnOrderNo');
         $nnPaymentData['mop']            = $this->sessionStorage->getPlugin()->getValue('mop');
         $nnPaymentData['payment_method'] = strtolower($this->paymentHelper->getPaymentKeyByMop($nnPaymentData['mop']));
-        
         $this->executePayment($nnPaymentData);
-        $isPrepayment = (bool)($nnPaymentData['payment_id'] == '27' && $nnPaymentData['invoice_type'] == 'PREPAYMENT');
 
         $transactionData = [
             'amount'           => $nnPaymentData['amount'] * 100,
@@ -142,7 +142,7 @@ class PaymentService
 		
         $this->transactionLogData->saveTransaction($transactionData);
         
-        if(!$this->isRedirectPayment(strtoupper($nnPaymentData['payment_method']))) {
+        if(!$this->isRedirectPayment($paymentKey)) {
             $this->sendPostbackCall($nnPaymentData);
         }
      }
@@ -157,7 +157,6 @@ class PaymentService
      */
     public function executePayment($requestData, $callbackfailure = false)
     {
-	    $this->getLogger(__METHOD__)->error('execute', $requestData);
         try {
             if(!$callbackfailure &&  in_array($requestData['status'], ['100', '90'])) {
 				if(in_array($requestData['tid_status'], ['86','90'])) {
@@ -204,39 +203,39 @@ class PaymentService
     {
         $lang = strtolower((string)$requestData['lang']);
 		$comments = '';
-	 
-        if(in_array($requestData['payment_id'], ['40','41'])) {
-            $comments .= PHP_EOL . $this->paymentHelper->getTranslatedText('guarantee_text');
-		}
         $comments .= PHP_EOL . $this->paymentHelper->getTranslatedText('nn_tid', $lang) . $requestData['tid'];
 	    
-        if(!empty($requestData['test_mode']))
+        if(!empty($requestData['test_mode'])) {
             $comments .= PHP_EOL . $this->paymentHelper->getTranslatedText('test_order', $lang);
+        }
         
         if($requestData['status'] != '100')
 		{
 			$responseText = $this->paymentHelper->getNovalnetStatusText($requestData);
 			$comments .= PHP_EOL . $this->paymentHelper->getTranslatedText('transaction_cancellation', $lang) . $responseText . PHP_EOL;    
-		}
-
-        if( $requestData['tid_status'] == '75')
-		{
-            $comments .= PHP_EOL . $this->paymentHelper->getTranslatedText('gurantee_pending_payment_text');
-        }
-        
-        if(in_array($requestData['payment_id'], ['27','41']))
-        {
-            $comments .= PHP_EOL . $this->getInvoicePrepaymentComments($requestData);
-        }
-        else if($requestData['payment_id'] == '59')
-        {
-			if(!empty($requestData['cp_checkout_token']))
-			{
-				$this->sessionStorage->getPlugin()->setValue('novalnet_checkout_token', $requestData['cp_checkout_token']);
-				$this->sessionStorage->getPlugin()->setValue('novalnet_checkout_url', $this->getBarzhalenTestMode($requestData['test_mode']));
+		} else {
+			if(in_array($requestData['payment_id'], ['40','41'])) {
+				$comments .= PHP_EOL . $this->paymentHelper->getTranslatedText('guarantee_text');
+				if( $requestData['tid_status'] == '75')
+				{
+					$comments .= PHP_EOL . $this->paymentHelper->getTranslatedText('gurantee_pending_payment_text');
+				}
 			}
-            $comments .= PHP_EOL . $this->getCashPaymentComments($requestData);
-        }
+			
+			if(in_array($requestData['payment_method'], ['novalnet_invoice','novalnet_prepayment']))
+			{
+				$comments .= PHP_EOL . $this->getInvoicePrepaymentComments($requestData);
+			}
+			else if($requestData['payment_id'] == '59')
+			{
+				if(!empty($requestData['cp_checkout_token']))
+				{
+					$this->sessionStorage->getPlugin()->setValue('novalnet_checkout_token', $requestData['cp_checkout_token']);
+					$this->sessionStorage->getPlugin()->setValue('novalnet_checkout_url', $this->getBarzhalenTestMode($requestData['test_mode']));
+				}
+				$comments .= PHP_EOL . $this->getCashPaymentComments($requestData);
+			}
+		}
 
         return $comments;
     }
@@ -278,26 +277,23 @@ class PaymentService
     public function getCashPaymentComments($requestData)
     {
         $comments = $this->paymentHelper->getTranslatedText('cashpayment_expire_date') . $requestData['cashpayment_due_date'] . PHP_EOL;
-        $comments .= PHP_EOL . PHP_EOL . $this->paymentHelper->getTranslatedText('cashpayment_near_you') . PHP_EOL . PHP_EOL . PHP_EOL;
 
         $strnos = 0;
-        foreach($requestData as $key => $val)
-        {
-            if(strpos($key, 'nearest_store_title') !== false)
-            {
-                $strnos++;
-            }
-        }
-
-        for($i = 1; $i <= $strnos; $i++)
-        {
-            $countryName = !empty($requestData['nearest_store_country_' . $i]) ? $requestData['nearest_store_country_' . $i] : '';
-            $comments .= $requestData['nearest_store_title_' . $i] . PHP_EOL;
-            $comments .= $countryName . PHP_EOL;
-            $comments .= $this->paymentHelper->checkUtf8Character($requestData['nearest_store_street_' . $i]) . PHP_EOL;
-            $comments .= $requestData['nearest_store_city_' . $i] . PHP_EOL;
-            $comments .= $requestData['nearest_store_zipcode_' . $i] . PHP_EOL . PHP_EOL;
-        }
+        
+        if ( isset( $requestData['nearest_store_title_1'] ) ) {
+			$comments .= PHP_EOL . PHP_EOL . $this->paymentHelper->getTranslatedText('cashpayment_near_you') . PHP_EOL . PHP_EOL . PHP_EOL;
+			$store_values = preg_filter( '/^nearest_store_(.*)_(.*)$/', '$2', array_keys( $requestData ) );
+			if ( $store_values ) {
+				$count     = max( $store_values );
+				for ( $i = 1; $i <= $count; $i++ ) {
+					$comments .= $requestData[ 'nearest_store_title_' . $i ] .PHP_EOL;
+					$comments .= $requestData[ 'nearest_store_street_' . $i ] .PHP_EOL;
+					$comments .= $requestData[ 'nearest_store_city_' . $i ] .PHP_EOL;
+					$comments .= $requestData[ 'nearest_store_zipcode_' . $i ] .PHP_EOL;
+					$comments .= $requestData[ 'nearest_store_country_' . $i ] . PHP_EOL;
+				}
+			}
+		}
 
         return $comments;
     }
@@ -328,7 +324,7 @@ class PaymentService
             'auth_code'          => $this->paymentHelper->getNovalnetConfig('novalnet_auth_code'),
             'product'            => $this->paymentHelper->getNovalnetConfig('novalnet_product_id'),
             'tariff'             => $this->paymentHelper->getNovalnetConfig('novalnet_tariff_id'),
-            'test_mode'          => (int)($this->config->get($testModeKey) == 'true'),
+            'test_mode'          => (bool)($this->config->get($testModeKey) == 'true'),
             'first_name'         => $address->firstName,
             'last_name'          => $address->lastName,
             'email'              => $address->email,
@@ -339,7 +335,7 @@ class PaymentService
             'zip'                => $address->postalCode,
             'customer_no'        => ($customerId) ? $customerId : 'guest',
             'lang'               => strtoupper($this->sessionStorage->getLocaleSettings()->language),
-            'amount'             => (sprintf('%0.2f', $basket->basketAmount) * 100),
+            'amount'             => $this->paymentHelper->ConvertAmountToSmallerUnit($basket->basketAmount),
             'currency'           => $basket->currency,
             'remote_ip'          => $this->paymentHelper->getRemoteAddress(),
             'system_ip'          => $this->paymentHelper->getServerAddress(),
@@ -366,17 +362,14 @@ class PaymentService
             $paymentRequestData['company'] = $shippingAddress->companyName;
         }
 
-        if(!empty($address->phone))
+        if(!empty($address->phone)) {
             $paymentRequestData['tel'] = $address->phone;
+        }
 
-        if(is_numeric($referrerId = $this->paymentHelper->getNovalnetConfig('referrer_id')))
+        if(is_numeric($referrerId = $this->paymentHelper->getNovalnetConfig('referrer_id'))) {
             $paymentRequestData['referrer_id'] = $referrerId;
-
-        $paymentRequestData['url'] = $this->getpaymentUrl($paymentKey);
-        $this->getPaymentParam($paymentRequestData, $paymentKey);
-
-        $url = $paymentRequestData['url'];
-        unset($paymentRequestData['url']);
+        }
+        $url = $this->getPaymentData($paymentKeyLower, $paymentRequestData);
 
         return [
             'data' => $paymentRequestData,
@@ -390,55 +383,52 @@ class PaymentService
      * @param array $paymentRequestData
      * @param string $paymentKey
      */
-    public function getPaymentParam(&$paymentRequestData, $paymentKey)
+    public function getPaymentData($paymentKey, &$paymentRequestData )
     {
-        if($paymentKey == 'NOVALNET_CC')
-        {
-            $onHoldLimit = $this->paymentHelper->getNovalnetConfig('novalnet_cc_on_hold');
-            if(is_numeric($onHoldLimit) && $paymentRequestData['amount'] >= $onHoldLimit)
+		$url = $this->getpaymentUrl(strtoupper($paymentKey));
+		if(in_array($paymentKey, ['novalnet_cc', 'novalnet_sepa', 'novalnet_paypal', 'novalnet_invoice'])) {
+			$onHoldLimit = $this->paymentHelper->getNovalnetConfig($paymentKey . '_on_hold');
+            if(is_numeric($onHoldLimit) && $paymentRequestData['amount'] >= $onHoldLimit) {
                 $paymentRequestData['on_hold'] = '1';
-
-            if($this->config->get('Novalnet.novalnet_cc_3d') == 'true') {
-                $paymentRequestData['cc_3d'] = '1';
-
             }
-            if($this->config->get('Novalnet.novalnet_cc_3d') == 'true' || $this->config->get('Novalnet.novalnet_cc_3d_fraudcheck') == 'true' ) {
-                $paymentRequestData['url'] = NovalnetConstants::CC3D_PAYMENT_URL;
-            }
-        }
-        else if($paymentKey == 'NOVALNET_SEPA')
-        {
-            $onHoldLimit = $this->paymentHelper->getNovalnetConfig('novalnet_sepa_on_hold');
-            if(is_numeric($onHoldLimit) && $paymentRequestData['amount'] >= $onHoldLimit)
-                $paymentRequestData['on_hold'] = '1';
-	    $paymentRequestData['sepa_due_date'] = $this->getSepaDueDate();
-        }
-        else if($paymentKey == 'NOVALNET_INVOICE')
-        {
-            $onHoldLimit = $this->paymentHelper->getNovalnetConfig('novalnet_invoice_on_hold');
-            if(is_numeric($onHoldLimit) && $paymentRequestData['amount'] >= $onHoldLimit)
-                $paymentRequestData['on_hold'] = '1';
-
-            $paymentRequestData['invoice_type'] = 'INVOICE';
-            $invoiceDueDate = $this->paymentHelper->getNovalnetConfig('novalnet_invoice_due_date');
-            if(is_numeric($invoiceDueDate))
-                $paymentRequestData['due_date'] = date( 'Y-m-d', strtotime( date( 'y-m-d' ) . '+ ' . $invoiceDueDate . ' days' ) );
-        }
-        else if($paymentKey == 'NOVALNET_PREPAYMENT')
+            if($paymentKey == 'novalnet_cc')
+			{
+				$onHoldLimit = $this->paymentHelper->getNovalnetConfig('novalnet_cc_on_hold');
+				if($this->config->get('Novalnet.novalnet_cc_3d') == 'true' || $this->config->get('Novalnet.novalnet_cc_3d_fraudcheck') == 'true' ) {
+					if($this->config->get('Novalnet.novalnet_cc_3d') == 'true') {
+						$paymentRequestData['cc_3d'] = '1';
+					}
+					$url = NovalnetConstants::CC3D_PAYMENT_URL;
+					array_push($thhis->redirectPayment, 'NOVALNET_CC');
+				}
+			}
+			else if($paymentKey == 'novalnet_sepa')
+			{
+				$dueDate = $this->paymentHelper->getNovalnetConfig('novalnet_sepa_due_date');
+				if(is_numeric($dueDate) && $dueDate >= 2 && $dueDate <= 14) {
+					$paymentRequestData['sepa_due_date'] = $this->paymentHelper->dateFormatter($dueDate);
+				}
+				
+			}
+			else if($paymentKey == 'novalnet_invoice')
+			{
+				$paymentRequestData['invoice_type'] = 'INVOICE';
+				$invoiceDueDate = $this->paymentHelper->getNovalnetConfig('novalnet_invoice_due_date');
+				if(is_numeric($invoiceDueDate)) {
+					$paymentRequestData['due_date'] = $this->paymentHelper->dateFormatter($invoiceDueDate);
+				}
+			}
+		}
+        else if($paymentKey == 'novalnet_prepayment')
         {
             $paymentRequestData['invoice_type'] = 'PREPAYMENT';
         }
-        else if($paymentKey == 'NOVALNET_CASHPAYMENT')
+        else if($paymentKey == 'novalnet_cashpayment')
         {
             $cashpaymentDueDate = $this->paymentHelper->getNovalnetConfig('novalnet_cashpayment_due_date');
-            if(is_numeric($cashpaymentDueDate))
-                $paymentRequestData['cashpayment_due_date'] = date( 'Y-m-d', strtotime( date( 'y-m-d' ) . '+ ' . $cashpaymentDueDate . ' days' ) );
-        }
-        else if($paymentKey == 'NOVALNET_PAYPAL')
-        {
-            $onHoldLimit = $this->paymentHelper->getNovalnetConfig('novalnet_paypal_on_hold');
-            if(is_numeric($onHoldLimit) && $paymentRequestData['amount'] >= $onHoldLimit)
-                $paymentRequestData['on_hold'] = '1';
+            if(is_numeric($cashpaymentDueDate)) {
+                $paymentRequestData['cashpayment_due_date'] = $this->paymentHelper->dateFormatter($cashpaymentDueDate);
+			}
         }
 
         if($this->isRedirectPayment($paymentKey))
@@ -449,6 +439,8 @@ class PaymentService
             $paymentRequestData['return_url'] = $paymentRequestData['error_return_url'] = $this->getReturnPageUrl();
             $paymentRequestData['return_method'] = $paymentRequestData['error_return_method'] = 'POST';
         }
+        
+        return $url;
     }
 
     /**
@@ -483,7 +475,7 @@ class PaymentService
      * @param string $paymentKey
      */
     public function isRedirectPayment($paymentKey) {
-		return (bool) in_array($paymentKey, ['NOVALNET_SOFORT', 'NOVALNET_PAYPAL', 'NOVALNET_IDEAL', 'NOVALNET_EPS', 'NOVALNET_GIROPAY', 'NOVALNET_PRZELEWY']);
+		return (bool) in_array($paymentKey, $thhis->redirectPayment);
 	}
 
     /**
@@ -631,25 +623,13 @@ class PaymentService
     */
     public function getCcDesignConfig()
     {
-        $design = [];
-        $design['standard_style_label'] = $this->paymentHelper->getNovalnetConfig('novalnet_cc_standard_style_label');
-        $design['standard_style_input'] = $this->paymentHelper->getNovalnetConfig('novalnet_cc_standard_style_field');
-        $design['standard_style_css'] = $this->paymentHelper->getNovalnetConfig('novalnet_cc_standard_style_css');
-        return $design;
+        return [
+			'standard_style_label' => $this->paymentHelper->getNovalnetConfig('novalnet_cc_standard_style_label'),
+			'standard_style_input' => $this->paymentHelper->getNovalnetConfig('novalnet_cc_standard_style_field'),
+			'standard_style_css' => $this->paymentHelper->getNovalnetConfig('novalnet_cc_standard_style_css'),
+        ];
     }
-	
-     /**
-     * Calculate SEPA due date based on the SEPA payment configuration
-     *
-     * @return string
-     */
-    public function getSepaDueDate()
-    {
-        $dueDate = $this->paymentHelper->getNovalnetConfig('novalnet_sepa_due_date');
-
-        return (preg_match('/^[0-9]/', $dueDate) && $dueDate > 1) ? date('Y-m-d', strtotime('+' . $dueDate . 'days')) : date( 'Y-m-d', strtotime('+2 days'));
-    }
-
+    
     /**
     * Get the Payment Guarantee status
     *
@@ -661,20 +641,18 @@ class PaymentService
     {
         // Get payment name in lowercase
         $paymentKeyLow = strtolower((string) $paymentKey);
-        $guaranteePayment = $this->config->get('Novalnet.'.$paymentKeyLow.'_payment_guarantee_active');
         $guarantee = false;
-        if ($guaranteePayment == 'true') {
+        if ($this->config->get('Novalnet.'.$paymentKeyLow.'_payment_guarantee_active') == 'true') {
             // Get guarantee minimum amount value
             $minimumAmount = $this->paymentHelper->getNovalnetConfig($paymentKeyLow . '_guarantee_min_amount');
             $minimumAmount = ((preg_match('/^[0-9]*$/', $minimumAmount) && $minimumAmount >= '999')  ? $minimumAmount : '999');
-            $amount        = (sprintf('%0.2f', $basket->basketAmount) * 100);
+            $amount        = $this->paymentHelper->ConvertAmountToSmallerUnit($basket->basketAmount);
 
-            $billingAddressId = $basket->customerInvoiceAddressId;
-            $billingAddress = $this->addressRepository->findAddressById($billingAddressId);
+            $billingAddress = $this->addressRepository->findAddressById($basket->customerInvoiceAddressId);
             $customerBillingIsoCode = strtoupper($this->countryRepository->findIsoCode($billingAddress->countryId, 'iso_code_2'));
 
             $shippingAddressId = $basket->customerShippingAddressId;
-            $shippingAddress = $this->addressRepository->findAddressById($shippingAddressId);
+            $shippingAddress = $this->addressRepository->findAddressById($basket->customerShippingAddressId);
             $customerShippingIsoCode = strtoupper($this->countryRepository->findIsoCode($shippingAddress->countryId, 'iso_code_2'));
 
             // Billing address
@@ -692,35 +670,29 @@ class PaymentService
 				'country'        => $customerShippingIsoCode,
 			];
             // Check guarantee payment
-            if (((int) $amount >= (int) $minimumAmount && in_array(
-                $customerBillingIsoCode,
-                [
-                 'DE',
-                 'AT',
-                 'CH',
-                ]
-            ) && $basket->currency == 'EUR' && ($billingAddress === $shippingAddress))
-            ) {
-                $guarantee = [
-					'status' => true,
-					'error'  => ''
-                ];
-            } elseif ($this->config->get('Novalnet.'.$paymentKeyLow.'_payment_guarantee_force_active') == 'true') {   
-                $guarantee = [
-					'status' => false,
-					'error'  => ''
-                ];
-            } else {
-				if ( ! in_array( $customerBillingIsoCode, array( 'AT', 'DE', 'CH' ), true ) ) {
-					$error = 'Only DACH countries allowed';					
-				} elseif ( $basket->currency !== 'EUR' ) {
-					$error = $this->paymentHelper->getTranslatedText('guarantee_process_error');					
-				} elseif ( ! empty( array_diff( $billingAddress, $shippingAddress ) ) ) {
-					$error = 'The shipping address cannot differ from the billing address';					
-				} elseif ( (int) $amount < (int) $minimumAmount ) {
-					$error = 'Minimum Amount Error';					
+            if ( ! in_array( $customerBillingIsoCode, array( 'AT', 'DE', 'CH' ), true ) ) {
+				$error = $this->paymentHelper->getTranslatedText('guarantee_country_error');
+			} elseif($basket->currency != 'EUR') {
+				$error = $this->paymentHelper->getTranslatedText('guarantee_currency_error');
+			} elseif($billingAddress !== $shippingAddress) {
+				$error = $this->paymentHelper->getTranslatedText('guarantee_address_error');
+			} elseif((int) $amount >= (int) $minimumAmount) {
+				$error = $this->paymentHelper->getTranslatedText('guarantee_minimum_amount_error') . $minimumAmount;	
+			}
+			if(!empty($error)) {
+				if($this->config->get('Novalnet.'.$paymentKeyLow.'_payment_guarantee_force_active') == 'true') {
+					return [
+						'status' => false,
+						'error'  => ''
+					];
+				} else {
+					return [
+						'status' => true,
+						'error'  => ''
+					];
 				}
-				$guarantee = [
+			} else {
+				return [
 					'status' => true,
 					'error'  => $error
                 ];
