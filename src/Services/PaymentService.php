@@ -126,7 +126,7 @@ class PaymentService
         
         $nnPaymentData['order_no']       = $this->sessionStorage->getPlugin()->getValue('nnOrderNo');
         $nnPaymentData['mop']            = $this->sessionStorage->getPlugin()->getValue('mop');
-        $nnPaymentData['payment_method'] = $this->paymentHelper->getPaymentKeyByMop($nnPaymentData['mop']);
+        $nnPaymentData['payment_method'] = strtolower($this->paymentHelper->getPaymentKeyByMop($nnPaymentData['mop']));
         
         $this->executePayment($nnPaymentData);
         $isPrepayment = (bool)($nnPaymentData['payment_id'] == '27' && $nnPaymentData['invoice_type'] == 'PREPAYMENT');
