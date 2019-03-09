@@ -121,35 +121,28 @@ class PaymentService
     public function validateResponse()
     {
         $nnPaymentData = $this->sessionStorage->getPlugin()->getValue('nnPaymentData');
-        if($nnPaymentData['payment_type'] == 'CASHPAYMENT' && !empty($nnPaymentData['cp_checkout_token']))
-        {
-            $this->sessionStorage->getPlugin()->setValue('cashtoken', $nnPaymentData['cp_checkout_token']);
-            $this->sessionStorage->getPlugin()->setValue('checkouturl', $this->getBarzhalenTestMode($nnPaymentData['test_mode']));
-        }
 
         $this->sessionStorage->getPlugin()->setValue('nnPaymentData', null);
-        $nnPaymentData['order_no'] = $this->sessionStorage->getPlugin()->getValue('nnOrderNo');
-        $nnPaymentData['mop']      = $this->sessionStorage->getPlugin()->getValue('mop');
+        
+        $nnPaymentData['order_no']       = $this->sessionStorage->getPlugin()->getValue('nnOrderNo');
+        $nnPaymentData['mop']            = $this->sessionStorage->getPlugin()->getValue('mop');
+        $nnPaymentData['payment_method'] = $this->paymentHelper->getPaymentKeyByMop($nnPaymentData['mop']);
+        
         $this->executePayment($nnPaymentData);
         $isPrepayment = (bool)($nnPaymentData['payment_id'] == '27' && $nnPaymentData['invoice_type'] == 'PREPAYMENT');
 
         $transactionData = [
             'amount'           => $nnPaymentData['amount'] * 100,
-            'callback_amount'  => $nnPaymentData['amount'] * 100,
+            'callback_amount'  => $nnPaymentData['paid_amount'],
             'tid'              => $nnPaymentData['tid'],
             'ref_tid'          => $nnPaymentData['tid'],
-            'payment_name'     => $this->paymentHelper->getPaymentNameByResponse($nnPaymentData['payment_id'], $isPrepayment),
-            'payment_type'     => $nnPaymentData['payment_type'],
+            'payment_name'     => $nnPaymentData['payment_method'],
             'order_no'         => $nnPaymentData['order_no'],
         ];
-
-        if(in_array($nnPaymentData['payment_id'], ['27', '59']) || (in_array($nnPaymentData['tid_status'], ['85','86','90'])))
-            $transactionData['callback_amount'] = 0;
 		
         $this->transactionLogData->saveTransaction($transactionData);
         
-        if(in_array($nnPaymentData['payment_type'],['INVOICE_START','DIRECT_DEBIT_SEPA','CASHPAYMENT', 'GUARANTEED_INVOICE', 'GUARANTEED_DIRECT_DEBIT_SEPA']) || ($nnPaymentData['payment_type'] == 'CREDITCARD' && $this->paymentHelper->getNovalnetConfig('novalnet_cc_3d') != 'true' && $this->paymentHelper->getNovalnetConfig('novalnet_cc_3d_fraudcheck') != 'true'))
-        {
+        if(!$this->isRedirectPayment($paymentKey)) {
             $this->sendPostbackCall($nnPaymentData);
         }
      }
@@ -165,19 +158,21 @@ class PaymentService
     public function executePayment($requestData, $callbackfailure = false)
     {
         try {
-            $requestData['amount'] = (float) $requestData['amount'];
-            if(!$callbackfailure &&  $requestData['status'] == '100') {
-				$requestData['order_status'] = $requestData['payment_id'] == '41' ? trim($this->config->get('Novalnet.novalnet_invoice_callback_order_status')) : trim($this->paymentHelper->getPaymentStatusByConfig($requestData['mop'], '_order_completion_status'));
-				$requestData['paid_amount'] = in_array($requestData['payment_id'], ['27','59']) ? 0 : $requestData['amount'];
-                if(in_array($requestData['tid_status'], ['86','90','85'])) {
-					$requestData['order_status'] = $requestData['payment_id'] == '78' ? trim($this->config->get('Novalnet.novalnet_przelewy_payment_pending_status')) : trim($this->config->get('Novalnet.novalnet_paypal_payment_pending_status'));
-                    $requestData['paid_amount'] = 0;
-                }
-                elseif($requestData['tid_status'] == '75') {
-                    $requestData['order_status'] = $requestData['payment_id'] == '40' ? trim($this->config->get('Novalnet.novalnet_sepa_payment_guarantee_status')) : trim($this->config->get('Novalnet.novalnet_invoice_payment_guarantee_status'));
-                    $requestData['paid_amount'] = 0;
-                }
-            } else {		    
+            if(!$callbackfailure &&  in_array($requestData['status'], ['100', '90'])) {
+				if(in_array($requestData['tid_status'], ['86','90'])) {
+					$requestData['order_status'] = trim($this->config->get('Novalnet.'. $requestData['payment_method'] .'_payment_pending_status'));
+					$requestData['paid_amount'] = 0;
+				} elseif($requestData['tid_status'] == '75') {
+					$requestData['order_status'] = trim($this->config->get('Novalnet.'. $requestData['payment_method'] .'_payment_guarantee_status'));
+					$requestData['paid_amount'] = 0;
+				} elseif($requestData['payment_id'] == '41' && $requestData['status'] == '100') {
+					$requestData['order_status'] = trim($this->config->get('Novalnet.novalnet_invoice_callback_order_status'));
+					$requestData['paid_amount'] = 0;
+				} else {
+					$requestData['order_status'] = trim($this->config->get('Novalnet.'. $requestData['payment_method'] .'_order_completion_status'));
+					$requestData['paid_amount'] = $requestData['amount'];
+				}
+            } else {
                 $requestData['order_status'] = trim($this->config->get('Novalnet.novalnet_order_cancel_status'));
                 $requestData['paid_amount'] = '0';
             }
@@ -207,16 +202,12 @@ class PaymentService
     public function getTransactionComments($requestData)
     {
         $lang = strtolower((string)$requestData['lang']);
-		$paymentKey = strtolower((string) $this->paymentHelper->getPaymentKeyByMop($requestData['mop']));
 		$comments = '';
 	 
-        if(in_array($requestData['payment_id'], ['40','41'])) 
+        if(in_array($requestData['payment_id'], ['40','41'])) {
             $comments .= PHP_EOL . $this->paymentHelper->getTranslatedText('guarantee_text');
-	 
-        $comments  .= PHP_EOL . (!empty($name = trim($this->config->get('Novalnet.' .$paymentKey.'_payment_name'))) ? trim($this->config->get('Novalnet.' . $paymentKey .'_payment_name')) : $this->paymentHelper->getTranslatedText($paymentKey));
+		}
         $comments .= PHP_EOL . $this->paymentHelper->getTranslatedText('nn_tid', $lang) . $requestData['tid'];
-	
-        $testModeKey = 'Novalnet.' . $paymentKey . '_test_mode';
 	    
         if(!empty($requestData['test_mode']))
             $comments .= PHP_EOL . $this->paymentHelper->getTranslatedText('test_order', $lang);
@@ -227,7 +218,7 @@ class PaymentService
 			$comments .= PHP_EOL . $this->paymentHelper->getTranslatedText('transaction_cancellation', $lang) . $responseText . PHP_EOL;    
 		}
 
-        if( $requestData['payment_id'] == '41' && $requestData['tid_status'] == '75')
+        if( $requestData['tid_status'] == '75')
 		{
             $comments .= PHP_EOL . $this->paymentHelper->getTranslatedText('gurantee_pending_payment_text');
         }
@@ -235,13 +226,14 @@ class PaymentService
         if(in_array($requestData['payment_id'], ['27','41']))
         {
             $comments .= PHP_EOL . $this->getInvoicePrepaymentComments($requestData);
-            $paymentKey = strtolower((string) $this->paymentHelper->getPaymentKeyByMop($requestData['mop']));
-            $guaranteeStatus = 'Novalnet.' . $paymentKey . '_payment_guarantee_status';
-            $order_status = trim($this->config->get($guaranteeStatus));
-            $this->paymentHelper->updateOrderStatus((int)$requestData['order_no'], $order_status);
         }
         else if($requestData['payment_id'] == '59')
         {
+			if(!empty($requestData['cp_checkout_token']))
+			{
+				$this->sessionStorage->getPlugin()->setValue('novalnet_checkout_token', $requestData['cp_checkout_token']);
+				$this->sessionStorage->getPlugin()->setValue('novalnet_checkout_url', $this->getBarzhalenTestMode($requestData['test_mode']));
+			}
             $comments .= PHP_EOL . $this->getCashPaymentComments($requestData);
         }
 
@@ -448,7 +440,7 @@ class PaymentService
                 $paymentRequestData['on_hold'] = '1';
         }
 
-        if($this->isRedirectPayment($paymentKey))
+        if(isRedirectPayment($paymentKey))
         {
 			$paymentRequestData['uniqid'] = $this->paymentHelper->getUniqueId();
             $this->encodePaymentData($paymentRequestData);
