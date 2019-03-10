@@ -646,13 +646,13 @@ class PaymentService
         $paymentKeyLow = strtolower((string) $paymentKey);
         $guaranteePayment = $this->config->get('Novalnet.'.$paymentKeyLow.'_payment_guarantee_active');
         $guarantee = false;
-	    $this->getLogger(__METHOD__)->error('2', 'testa');	
+	    
         if ($guaranteePayment == 'true') {
             // Get guarantee minimum amount value
             $minimumAmount = $this->paymentHelper->getNovalnetConfig($paymentKeyLow . '_guarantee_min_amount');
             $minimumAmount = ((preg_match('/^[0-9]*$/', $minimumAmount) && $minimumAmount >= '999')  ? $minimumAmount : '999');
             $amount        = (sprintf('%0.2f', $basket->basketAmount) * 100);
-
+$this->getLogger(__METHOD__)->error('2', 'testaa');	
             $billingAddressId = $basket->customerInvoiceAddressId;
             $billingAddress = $this->addressRepository->findAddressById($billingAddressId);
             $customerBillingIsoCode = strtoupper($this->countryRepository->findIsoCode($billingAddress->countryId, 'iso_code_2'));
