@@ -652,15 +652,15 @@ class PaymentService
             $minimumAmount = $this->paymentHelper->getNovalnetConfig($paymentKeyLow . '_guarantee_min_amount');
             $minimumAmount = ((preg_match('/^[0-9]*$/', $minimumAmount) && $minimumAmount >= '999')  ? $minimumAmount : '999');
             $amount        = (sprintf('%0.2f', $basket->basketAmount) * 100);
-
+$this->getLogger(__METHOD__)->error('2', 'testaaa12');	
             $billingAddressId = $basket->customerInvoiceAddressId;
             $billingAddress = $this->addressRepository->findAddressById($billingAddressId);
             $customerBillingIsoCode = strtoupper($this->countryRepository->findIsoCode($billingAddress->countryId, 'iso_code_2'));
-
+$this->getLogger(__METHOD__)->error('2', 'testaaa1');	
             $shippingAddressId = $basket->customerShippingAddressId;
             $shippingAddress = $this->addressRepository->findAddressById($shippingAddressId);
             $customerShippingIsoCode = strtoupper($this->countryRepository->findIsoCode($shippingAddress->countryId, 'iso_code_2'));
-$this->getLogger(__METHOD__)->error('2', 'testaaa1');	
+
             // Billing address
             $billingAddress = [
 				'street_address' => (($billingAddress->street) ? $billingAddress->street : $billingAddress->address1),
