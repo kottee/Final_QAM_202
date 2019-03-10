@@ -210,7 +210,7 @@ class NovalnetServiceProvider extends ServiceProvider
 						$basket = $basketRepository->load();
 						$guaranteeStatus = $paymentService->getGuaranteeStatus($basketRepository->load(), $paymentKey);
 				
-			    $this->getLogger(__METHOD__)->error('2', $guaranteeStatus);	
+			    $this->getLogger(__METHOD__)->error('2', 'test');	
 			    $redirect = $paymentService->isRedirectPayment($paymentKey);		
 			    if ($redirect && $paymentKey != 'NOVALNET_CC') { # Redirection payments
 							$serverRequestData = $paymentService->getRequestParameters($basketRepository->load(), $paymentKey);
