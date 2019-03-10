@@ -656,7 +656,6 @@ $this->getLogger(__METHOD__)->error('2', 'testaaa12');
             $billingAddressId = $basket->customerInvoiceAddressId;
             $billingAddress = $this->addressRepository->findAddressById($billingAddressId);
             $customerBillingIsoCode = strtoupper($this->countryRepository->findIsoCode($billingAddress->countryId, 'iso_code_2'));
-$this->getLogger(__METHOD__)->error('2', 'testaaa1');	
             $shippingAddressId = $basket->customerShippingAddressId;
             $shippingAddress = $this->addressRepository->findAddressById($shippingAddressId);
             $customerShippingIsoCode = strtoupper($this->countryRepository->findIsoCode($shippingAddress->countryId, 'iso_code_2'));
