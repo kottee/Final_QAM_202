@@ -660,7 +660,7 @@ class PaymentService
             $shippingAddressId = $basket->customerShippingAddressId;
             $shippingAddress = $this->addressRepository->findAddressById($shippingAddressId);
             $customerShippingIsoCode = strtoupper($this->countryRepository->findIsoCode($shippingAddress->countryId, 'iso_code_2'));
-
+$this->getLogger(__METHOD__)->error('2', 'testaaa1');	
             // Billing address
             $billingAddress = [
 				'street_address' => (($billingAddress->street) ? $billingAddress->street : $billingAddress->address1),
@@ -676,7 +676,7 @@ class PaymentService
 				'country'        => $customerShippingIsoCode,
 			];
             // Check guarantee payment
-		$this->getLogger(__METHOD__)->error('2', 'testaaa1');	
+		
             if (((int) $amount >= (int) $minimumAmount && in_array(
                 $customerBillingIsoCode,
                 [
