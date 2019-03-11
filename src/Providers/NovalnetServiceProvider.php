@@ -226,6 +226,9 @@ class NovalnetServiceProvider extends ServiceProvider
                             $contentType = 'htmlContent';
 						} elseif($paymentKey == 'NOVALNET_SEPA') {
                                 $paymentProcessUrl = $paymentService->getProcessPaymentUrl();
+				$basket = $basketRepository->load();			
+				$billingAddressId = $basket->customerInvoiceAddressId;
+        			$address = $this->addressRepository->findAddressById($billingAddressId);			
                                 $nnDetails = [];
                                 $contentType = 'htmlContent';
                                 $nnDetails['sepadoberror'] = $paymentHelper->getTranslatedText('doberror');
@@ -242,7 +245,8 @@ class NovalnetServiceProvider extends ServiceProvider
                                                                     'nnPaymentProcessUrl' => $paymentProcessUrl,
                                                                     'paymentMopKey'     =>  $paymentKey,
                                                                     'nnSepaHiddenValue' => $nnDetails,
-                                                                    'nnGuaranteeStatus' => $guaranteeStatus,
+								 'endcustomername'=> $address->firstName . $address->lastName,
+                                                                    'nnGuaranteeStatus' => (empty($address->companyName))? $guaranteeStatus : ''
                                                  ]);
                                 }
                             } else {
