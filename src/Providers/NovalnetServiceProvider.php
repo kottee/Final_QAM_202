@@ -225,6 +225,7 @@ class NovalnetServiceProvider extends ServiceProvider
                                        ]);
                             $contentType = 'htmlContent';
 						} if($paymentKey == 'NOVALNET_SEPA'){
+							$this->getLogger(__METHOD__)->error('ree1', $paymentKey);
                                 $paymentProcessUrl = $paymentService->getProcessPaymentUrl();
                                 $nnDetails = [];
                                 $contentType = 'htmlContent';
@@ -233,6 +234,7 @@ class NovalnetServiceProvider extends ServiceProvider
 
                                 if($guaranteeStatus == 'error')
                                 {
+					$this->getLogger(__METHOD__)->error('re21', $paymentKey);
                                     $contentType = 'errorCode';
                                     $content = $paymentHelper->getTranslatedText('guarantee_process_error');
                                 }
