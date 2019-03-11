@@ -224,7 +224,7 @@ class NovalnetServiceProvider extends ServiceProvider
 								'nnFormDesign'  		=>  $paymentService->getCcDesignConfig()
                                        ]);
                             $contentType = 'htmlContent';
-						} elseif($paymentKey == 'NOVALNET_SEPA'){
+						} elseif($paymentKey == 'NOVALNET_SEPA') {
                                 $paymentProcessUrl = $paymentService->getProcessPaymentUrl();
                                 $nnDetails = [];
                                 $contentType = 'htmlContent';
@@ -247,46 +247,48 @@ class NovalnetServiceProvider extends ServiceProvider
                                 }
                             } else {
 								if(in_array($paymentKey, ['NOVALNET_INVOICE', 'NOVALNET_PREPAYMENT', 'NOVALNET_CASHPAYMENT']))
-                        {
+								{
 				
-                            $processDirect = true;
-                            if($paymentKey == 'NOVALNET_INVOICE')
-                            {
-                                $guaranteeStatus = $paymentService->getGuaranteeStatus($basketRepository->load(), $paymentKey);
-                                if($guaranteeStatus == 'error')
-                                {
-                                    $processDirect = false;
-                                    $contentType = 'errorCode';
-                                    $content = $paymentHelper->getTranslatedText('guarantee_process_error');
-                                }
-                                else if($guaranteeStatus == 'guarantee')
-                                {
-                                    $processDirect = false;
-                                    $paymentProcessUrl = $paymentService->getProcessPaymentUrl();
-                                    $content = $twig->render('Novalnet::PaymentForm.NOVALNET_INVOICE', [
-                                                        'nnPaymentProcessUrl' => $paymentProcessUrl,
-                                                        'paymentMopKey'     =>  $paymentKey,
-                                                        'nnDobValue' => ''
-                                    ]);
-                                    $contentType = 'htmlContent';
-                                 }
-                            }
-				    		if($processDirect) {
-							$serverRequestData = $paymentService->getRequestParameters($basketRepository->load(), $paymentKey);
-							$sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
-							$response = $paymentHelper->executeCurl($serverRequestData['data'], $serverRequestData['url']);
-							$responseData = $paymentHelper->convertStringToArray($response['response'], '&');
-							$responseData['payment_id'] = (!empty($responseData['payment_id'])) ? $responseData['payment_id'] : $responseData['key'];
-							$sessionStorage->getPlugin()->setValue('nnPaymentData', array_merge($serverRequestData['data'], $responseData));
-							$isPaymentSuccess = isset($responseData['status']) && $responseData['status'] == '100';
-							$notificationType = $isPaymentSuccess ? 'success' : 'error';
-							$paymentService->pushNotification($notificationType, $paymentHelper->getNovalnetStatusText($responseData));
-							$content = '';
-							$contentType = 'continue';
-						 } } }
-                        $event->setValue($content);
-                        $event->setType($contentType);
-                    } 
+									$processDirect = true;
+									if($paymentKey == 'NOVALNET_INVOICE')
+									{
+										$guaranteeStatus = $paymentService->getGuaranteeStatus($basketRepository->load(), $paymentKey);
+										if($guaranteeStatus == 'error')
+										{
+											$processDirect = false;
+											$contentType = 'errorCode';
+											$content = $paymentHelper->getTranslatedText('guarantee_process_error');
+										}
+										else if($guaranteeStatus == 'guarantee')
+										{
+											$processDirect = false;
+											$paymentProcessUrl = $paymentService->getProcessPaymentUrl();
+											$content = $twig->render('Novalnet::PaymentForm.NOVALNET_INVOICE', [
+																'nnPaymentProcessUrl' => $paymentProcessUrl,
+																'paymentMopKey'     =>  $paymentKey,
+																'nnDobValue' => ''
+											]);
+											$contentType = 'htmlContent';
+										 }
+									}
+									if ($processDirect) {
+									$serverRequestData = $paymentService->getRequestParameters($basketRepository->load(), $paymentKey);
+									$sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
+									$response = $paymentHelper->executeCurl($serverRequestData['data'], $serverRequestData['url']);
+									$responseData = $paymentHelper->convertStringToArray($response['response'], '&');
+									$responseData['payment_id'] = (!empty($responseData['payment_id'])) ? $responseData['payment_id'] : $responseData['key'];
+									$sessionStorage->getPlugin()->setValue('nnPaymentData', array_merge($serverRequestData['data'], $responseData));
+									$isPaymentSuccess = isset($responseData['status']) && $responseData['status'] == '100';
+									$notificationType = $isPaymentSuccess ? 'success' : 'error';
+									$paymentService->pushNotification($notificationType, $paymentHelper->getNovalnetStatusText($responseData));
+									$content = '';
+									$contentType = 'continue';
+									} 
+								} 
+							}
+								$event->setValue($content);
+								$event->setType($contentType);
+						} 
                 });
 
         // Listen for the event that executes the payment
