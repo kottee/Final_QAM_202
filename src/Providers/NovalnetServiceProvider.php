@@ -204,18 +204,11 @@ class NovalnetServiceProvider extends ServiceProvider
                 {
 			
                     if($paymentHelper->getPaymentKeyByMop($event->getMop()))
-                    {
-			$this->getLogger(__METHOD__)->error('enter', 'entry');			
-			    $paymentKey = $paymentHelper->getPaymentKeyByMop($event->getMop());
-			    $this->getLogger(__METHOD__)->error('key', $paymentKey);	
-						$basket = $basketRepository->load();
+                    {		
+						$paymentKey = $paymentHelper->getPaymentKeyByMop($event->getMop());	
 						$guaranteeStatus = $paymentService->getGuaranteeStatus($basketRepository->load(), $paymentKey);
-			    
-				
-
-			    $redirect = $paymentService->isRedirectPayment($paymentKey);		
-			    if ($redirect && $paymentKey != 'NOVALNET_CC') { # Redirection payments
-				    $this->getLogger(__METHOD__)->error('enter4', 'entry');	
+						$redirect = $paymentService->isRedirectPayment($paymentKey);		
+						if ($redirect && $paymentKey != 'NOVALNET_CC') { # Redirection payments
 							$serverRequestData = $paymentService->getRequestParameters($basketRepository->load(), $paymentKey);
                             $sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
                             $sessionStorage->getPlugin()->setValue('nnPaymentUrl', $serverRequestData['url']);
@@ -231,29 +224,55 @@ class NovalnetServiceProvider extends ServiceProvider
 								'nnFormDesign'  		=>  $paymentService->getCcDesignConfig()
                                        ]);
                             $contentType = 'htmlContent';
-						} elseif ($paymentKey == 'NOVALNET_SEPA' ||  $guaranteeStatus == 'error' || $guaranteeStatus == 'guarantee') { # SEPA and guarantee payments							
-				$this->getLogger(__METHOD__)->error('enter6', 'entry');				
-				    if($guaranteeStatus == 'error')
+						} if($paymentKey == 'NOVALNET_SEPA'){
+                                $paymentProcessUrl = $paymentService->getProcessPaymentUrl();
+                                $nnDetails = [];
+                                $contentType = 'htmlContent';
+                                $nnDetails['sepadoberror'] = $paymentHelper->getTranslatedText('doberror');
+                                $guaranteeStatus = $paymentService->getGuaranteeStatus($basketRepository->load(), $paymentKey);
+
+                                if($guaranteeStatus == 'error')
                                 {
-                                   
                                     $contentType = 'errorCode';
                                     $content = $paymentHelper->getTranslatedText('guarantee_process_error');
-                                } else {
-					    $this->getLogger(__METHOD__)->error('enter7', 'entry');	
-								$billingAddressId = $basket->customerInvoiceAddressId;
-								$address = $addressRepository->findAddressById($billingAddressId);
-								$content = $twig->render('Novalnet::PaymentForm.'. $paymentKey, [
-									'nnPaymentProcessUrl' 	=> $paymentService->getProcessPaymentUrl(),
-									'paymentMopKey'     	=>  $paymentKey,
-									'nnGuaranteeStatus' 	=> !empty($address->companyName) ? true : false
-								]);
-								$contentType = 'htmlContent';
-							} 
-						} else {
-				    $this->getLogger(__METHOD__)->error('enter2', '1234');			
+                                }
+                                else
+                                {
+                                $content = $twig->render('Novalnet::PaymentForm.NOVALNET_SEPA', [
+                                                                    'nnPaymentProcessUrl' => $paymentProcessUrl,
+                                                                    'paymentMopKey'     =>  $paymentKey,
+                                                                    'nnSepaHiddenValue' => $nnDetails,
+                                                                    'nnGuaranteeStatus' => $guaranteeStatus,
+                                                 ]);
+                                }
+                            } else {
+								if(in_array($paymentKey, ['NOVALNET_INVOICE', 'NOVALNET_PREPAYMENT', 'NOVALNET_CASHPAYMENT']))
+                        {
+                            $processDirect = true;
+                            if($paymentKey == 'NOVALNET_INVOICE')
+                            {
+                                $guaranteeStatus = $paymentService->getGuaranteeStatus($basketRepository->load(), $paymentKey);
+                                if($guaranteeStatus == 'error')
+                                {
+                                    $processDirect = false;
+                                    $contentType = 'errorCode';
+                                    $content = $paymentHelper->getTranslatedText('guarantee_process_error');
+                                }
+                                else if($guaranteeStatus == 'guarantee')
+                                {
+                                    $processDirect = false;
+                                    $paymentProcessUrl = $paymentService->getProcessPaymentUrl();
+                                    $content = $twig->render('Novalnet::PaymentForm.Invoice', [
+                                                        'nnPaymentProcessUrl' => $paymentProcessUrl,
+                                                        'paymentMopKey'     =>  $paymentKey,
+                                                        'nnDobValue' => ''
+                                    ]);
+                                    $contentType = 'htmlContent';
+                                 }
+                            }
+				    		if($processDirect)
 							$serverRequestData = $paymentService->getRequestParameters($basketRepository->load(), $paymentKey);
-					$this->getLogger(__METHOD__)->error('enter3', $serverRequestData);					
-				    $sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
+							$sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
 							$response = $paymentHelper->executeCurl($serverRequestData['data'], $serverRequestData['url']);
 							$responseData = $paymentHelper->convertStringToArray($response['response'], '&');
 							$responseData['payment_id'] = (!empty($responseData['payment_id'])) ? $responseData['payment_id'] : $responseData['key'];
