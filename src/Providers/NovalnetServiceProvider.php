@@ -270,7 +270,7 @@ class NovalnetServiceProvider extends ServiceProvider
                                     $contentType = 'htmlContent';
                                  }
                             }
-				    		if($processDirect)
+				    		if($processDirect) {
 							$serverRequestData = $paymentService->getRequestParameters($basketRepository->load(), $paymentKey);
 							$sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
 							$response = $paymentHelper->executeCurl($serverRequestData['data'], $serverRequestData['url']);
@@ -282,10 +282,10 @@ class NovalnetServiceProvider extends ServiceProvider
 							$paymentService->pushNotification($notificationType, $paymentHelper->getNovalnetStatusText($responseData));
 							$content = '';
 							$contentType = 'continue';
-						}
+						 } } }
                         $event->setValue($content);
                         $event->setType($contentType);
-                    }
+                    } 
                 });
 
         // Listen for the event that executes the payment
