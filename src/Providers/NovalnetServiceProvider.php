@@ -205,7 +205,7 @@ class NovalnetServiceProvider extends ServiceProvider
 			
                     if($paymentHelper->getPaymentKeyByMop($event->getMop()))
                     {
-						
+			$this->getLogger(__METHOD__)->error('enter', 'entry');			
 			    $paymentKey = $paymentHelper->getPaymentKeyByMop($event->getMop());
 						$basket = $basketRepository->load();
 						$guaranteeStatus = $paymentService->getGuaranteeStatus($basketRepository->load(), $paymentKey);
@@ -244,8 +244,10 @@ class NovalnetServiceProvider extends ServiceProvider
 								$contentType = 'htmlContent';
 							} 
 						} else {
+				    $this->getLogger(__METHOD__)->error('enter2', '1234');			
 							$serverRequestData = $paymentService->getRequestParameters($basketRepository->load(), $paymentKey);
-							$sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
+					$this->getLogger(__METHOD__)->error('enter3', $serverRequestData);					
+				    $sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
 							$response = $paymentHelper->executeCurl($serverRequestData['data'], $serverRequestData['url']);
 							$responseData = $paymentHelper->convertStringToArray($response['response'], '&');
 							$responseData['payment_id'] = (!empty($responseData['payment_id'])) ? $responseData['payment_id'] : $responseData['key'];
