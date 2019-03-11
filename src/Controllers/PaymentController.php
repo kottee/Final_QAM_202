@@ -143,47 +143,69 @@ class PaymentController extends Controller
 				return $this->response->redirectTo('place-order');
 			}
 		}
-		// Mandatory params for SEPA
-		if ( $requestData['paymentKey'] == 'NOVALNET_SEPA' ) {
-			$serverRequestData['data']['bank_account_holder'] = $requestData['nn_sepa_cardholder'];
-			$serverRequestData['data']['iban'] = $requestData['nn_sepa_iban'];	
-		}            
+		// Handles Guarantee and Normal Payment
+		else if( in_array( $requestData['paymentKey'], $guarantee_payments ) ) 
+		{	
+			// Mandatory Params For Novalnet SEPA
+			if ( $requestData['paymentKey'] == 'NOVALNET_SEPA' ) {
+					$serverRequestData['data']['bank_account_holder'] = $requestData['sepa_cardholder'];
+					$serverRequestData['data']['iban'] = $requestData['sepa_iban'];					
+			}            
 			
-		$guaranteeStatus = $this->paymentService->getGuaranteeStatus($this->basketRepository->load(), $requestData['paymentKey']);                        
+			$guranteeStatus = $this->paymentService->getGuaranteeStatus($this->basketRepository->load(), $requestData['paymentKey']);                        
 			
-		if($guaranteeStatus['status'])
-		{		   
-			$birthday     = ( $requestData['paymentKey'] == 'NOVALNET_SEPA' ) ? $requestData['nn_sepa_birthday'] : $requestData['nn_invoice_birthday'];
-			// Guarantee payment params 
-			if( $requestData['paymentKey'] == 'NOVALNET_SEPA' ) {
-				$serverRequestData['data']['payment_type'] = 'GUARANTEED_DIRECT_DEBIT_SEPA';
-				$serverRequestData['data']['key']          = '40';
-				$serverRequestData['data']['birth_date']   = $birthday;
-			} else {						
-				$serverRequestData['data']['payment_type'] = 'GUARANTEED_INVOICE';
-				$serverRequestData['data']['key']          = '41';
-				$serverRequestData['data']['birth_date']   = $birthday;							
-			}
-			// Proceed as non gurantee if condition for birthdate doesn't meet as well as force is enable
-			if($this->config->get( 'Novalnet'.$requestData['paymentKey'].'_payment_guarantee_force_active' ) == 'true') {
-				if( $requestData['paymentKey'] == 'NOVALNET_SEPA' ) {
+			if('guarantee' == $guranteeStatus)
+			{		   
+				$birthday     = ( $requestData['paymentKey'] == 'NOVALNET_SEPA' ) ? $requestData['nn_sepa_birthday'] : $requestData['nn_invoice_birthday'];
+				$force_status = ( $requestData['paymentKey'] == 'NOVALNET_SEPA' ) ? 'Novalnet.novalnet_sepa_payment_guarantee_force_active' : 'Novalnet.novalnet_invoice_payment_guarantee_force_active';				
+				
+				// Proceed as Normal Payment if condition for birthdate doesn't meet as well as force is enable    
+				if ($this->config->get( $force_status ) == 'true' && (empty($birthday) || time() < strtotime('+18 years', strtotime($birthday)))) {	
+					if( $requestData['paymentKey'] == 'NOVALNET_SEPA' ) {
 					$serverRequestData['data']['payment_type'] = 'DIRECT_DEBIT_SEPA';
 					$serverRequestData['data']['key']          = '37';
-				} else {
+					} else {
 					$serverRequestData['data']['payment_type'] = 'INVOICE_START';
 					$serverRequestData['data']['key']          = '27';
+					}
+					
 				}
-			} else {
-				if(empty($birthday))
-				{	
-					$responseData['status'] = '101';
-					$this->paymentService->pushNotification('error', $this->paymentHelper->getTranslatedText('doberror'));
+				else if( empty( $birthday ) )
+				{			
+					$notifications = json_decode($this->sessionStorage->getPlugin()->getValue('notifications'));
+					array_push($notifications,[
+						'message' => $this->paymentHelper->getTranslatedText('doberror'),
+						'type'    => 'error',
+						'code'    => ''
+					 ]);
+					$this->sessionStorage->getPlugin()->setValue('notifications', json_encode($notifications));
 					return $this->response->redirectTo('checkout');
 				}
 				else if(time() < strtotime('+18 years', strtotime($birthday)))
 				{
-					$this->paymentService->pushNotification('error', $this->paymentHelper->getTranslatedText('dobinvalid'));
+			
+					$notifications = json_decode($this->sessionStorage->getPlugin()->getValue('notifications'));
+					array_push($notifications,[
+						'message' => $this->paymentHelper->getTranslatedText('dobinvalid'),
+						'type'    => 'error',
+						'code'    => ''
+					 ]);
+					$this->sessionStorage->getPlugin()->setValue('notifications', json_encode($notifications));
 					return $this->response->redirectTo('checkout');
+				} 
+				else
+				{
+			
+			// Guarantee Params Formation 
+					if( $requestData['paymentKey'] == 'NOVALNET_SEPA' ) {
+					$serverRequestData['data']['payment_type'] = 'GUARANTEED_DIRECT_DEBIT_SEPA';
+					$serverRequestData['data']['key']          = '40';
+					$serverRequestData['data']['birth_date']   = $birthday;
+					} else {						
+					$serverRequestData['data']['payment_type'] = 'GUARANTEED_INVOICE';
+					$serverRequestData['data']['key']          = '41';
+					$serverRequestData['data']['birth_date']   = $requestData['nn_invoice_birthday'];							
+					}
 				}
 			}
 		}
