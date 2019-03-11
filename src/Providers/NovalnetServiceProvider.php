@@ -228,7 +228,7 @@ class NovalnetServiceProvider extends ServiceProvider
                                 $paymentProcessUrl = $paymentService->getProcessPaymentUrl();
 				$basket = $basketRepository->load();			
 				$billingAddressId = $basket->customerInvoiceAddressId;
-        			$address = $this->addressRepository->findAddressById($billingAddressId);			
+        			$address = $addressRepository->findAddressById($billingAddressId);			
                                 $nnDetails = [];
                                 $contentType = 'htmlContent';
                                 $nnDetails['sepadoberror'] = $paymentHelper->getTranslatedText('doberror');
