@@ -231,12 +231,14 @@ class NovalnetServiceProvider extends ServiceProvider
 								'nnFormDesign'  		=>  $paymentService->getCcDesignConfig()
                                        ]);
                             $contentType = 'htmlContent';
-						} elseif ($paymentKey == 'NOVALNET_SEPA' || $guaranteeStatus['status']) { # SEPA and guarantee payments							
+						} elseif ($paymentKey == 'NOVALNET_SEPA' ||  $guaranteeStatus == 'error' || $guaranteeStatus == 'guarantee') { # SEPA and guarantee payments							
 				$this->getLogger(__METHOD__)->error('enter6', 'entry');				
-				    if($guaranteeStatus['status'] && $guaranteeStatus['error'] != '') {
-								$contentType = 'errorCode';
-								$content = $guaranteeStatus['error'];
-							} else {
+				    if($guaranteeStatus == 'error')
+                                {
+                                   
+                                    $contentType = 'errorCode';
+                                    $content = $paymentHelper->getTranslatedText('guarantee_process_error');
+                                } else {
 					    $this->getLogger(__METHOD__)->error('enter7', 'entry');	
 								$billingAddressId = $basket->customerInvoiceAddressId;
 								$address = $addressRepository->findAddressById($billingAddressId);
