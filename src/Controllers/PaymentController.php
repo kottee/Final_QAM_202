@@ -148,8 +148,8 @@ class PaymentController extends Controller
 		{	
 			// Mandatory Params For Novalnet SEPA
 			if ( $requestData['paymentKey'] == 'NOVALNET_SEPA' ) {
-					$serverRequestData['data']['bank_account_holder'] = $requestData['sepa_cardholder'];
-					$serverRequestData['data']['iban'] = $requestData['sepa_iban'];					
+					$serverRequestData['data']['bank_account_holder'] = $requestData['nn_sepa_cardholder'];
+					$serverRequestData['data']['iban'] = $requestData['nn_sepa_iban'];					
 			}            
 			
 			$guranteeStatus = $this->paymentService->getGuaranteeStatus($this->basketRepository->load(), $requestData['paymentKey']);                        
