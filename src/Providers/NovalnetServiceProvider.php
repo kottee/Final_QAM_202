@@ -224,8 +224,7 @@ class NovalnetServiceProvider extends ServiceProvider
 								'nnFormDesign'  		=>  $paymentService->getCcDesignConfig()
                                        ]);
                             $contentType = 'htmlContent';
-						} if($paymentKey == 'NOVALNET_SEPA'){
-							$this->getLogger(__METHOD__)->error('ree1', $paymentKey);
+						} elseif($paymentKey == 'NOVALNET_SEPA'){
                                 $paymentProcessUrl = $paymentService->getProcessPaymentUrl();
                                 $nnDetails = [];
                                 $contentType = 'htmlContent';
@@ -234,7 +233,6 @@ class NovalnetServiceProvider extends ServiceProvider
 
                                 if($guaranteeStatus == 'error')
                                 {
-					$this->getLogger(__METHOD__)->error('re21', $paymentKey);
                                     $contentType = 'errorCode';
                                     $content = $paymentHelper->getTranslatedText('guarantee_process_error');
                                 }
@@ -250,22 +248,19 @@ class NovalnetServiceProvider extends ServiceProvider
                             } else {
 								if(in_array($paymentKey, ['NOVALNET_INVOICE', 'NOVALNET_PREPAYMENT', 'NOVALNET_CASHPAYMENT']))
                         {
-									$this->getLogger(__METHOD__)->error('re', $paymentKey);
+				
                             $processDirect = true;
                             if($paymentKey == 'NOVALNET_INVOICE')
                             {
-				    $this->getLogger(__METHOD__)->error('re1', $paymentKey);
                                 $guaranteeStatus = $paymentService->getGuaranteeStatus($basketRepository->load(), $paymentKey);
                                 if($guaranteeStatus == 'error')
                                 {
-					$this->getLogger(__METHOD__)->error('re2', $guaranteeStatus);
                                     $processDirect = false;
                                     $contentType = 'errorCode';
                                     $content = $paymentHelper->getTranslatedText('guarantee_process_error');
                                 }
                                 else if($guaranteeStatus == 'guarantee')
                                 {
-					$this->getLogger(__METHOD__)->error('re3', $guaranteeStatus);
                                     $processDirect = false;
                                     $paymentProcessUrl = $paymentService->getProcessPaymentUrl();
                                     $content = $twig->render('Novalnet::PaymentForm.NOVALNET_INVOICE', [
@@ -277,7 +272,6 @@ class NovalnetServiceProvider extends ServiceProvider
                                  }
                             }
 				    		if($processDirect) {
-							$this->getLogger(__METHOD__)->error('re4', $guaranteeStatus);
 							$serverRequestData = $paymentService->getRequestParameters($basketRepository->load(), $paymentKey);
 							$sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
 							$response = $paymentHelper->executeCurl($serverRequestData['data'], $serverRequestData['url']);
