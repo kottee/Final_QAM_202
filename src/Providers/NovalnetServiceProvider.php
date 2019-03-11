@@ -207,6 +207,7 @@ class NovalnetServiceProvider extends ServiceProvider
                     {
 			$this->getLogger(__METHOD__)->error('enter', 'entry');			
 			    $paymentKey = $paymentHelper->getPaymentKeyByMop($event->getMop());
+			    $this->getLogger(__METHOD__)->error('key', $paymentKey);	
 						$basket = $basketRepository->load();
 						$guaranteeStatus = $paymentService->getGuaranteeStatus($basketRepository->load(), $paymentKey);
 			    
@@ -214,6 +215,7 @@ class NovalnetServiceProvider extends ServiceProvider
 
 			    $redirect = $paymentService->isRedirectPayment($paymentKey);		
 			    if ($redirect && $paymentKey != 'NOVALNET_CC') { # Redirection payments
+				    $this->getLogger(__METHOD__)->error('enter4', 'entry');	
 							$serverRequestData = $paymentService->getRequestParameters($basketRepository->load(), $paymentKey);
                             $sessionStorage->getPlugin()->setValue('nnPaymentData', $serverRequestData['data']);
                             $sessionStorage->getPlugin()->setValue('nnPaymentUrl', $serverRequestData['url']);
@@ -230,10 +232,12 @@ class NovalnetServiceProvider extends ServiceProvider
                                        ]);
                             $contentType = 'htmlContent';
 						} elseif ($paymentKey == 'NOVALNET_SEPA' || $guaranteeStatus['status']) { # SEPA and guarantee payments							
-							if($guaranteeStatus['status'] && $guaranteeStatus['error'] != '') {
+				$this->getLogger(__METHOD__)->error('enter6', 'entry');				
+				    if($guaranteeStatus['status'] && $guaranteeStatus['error'] != '') {
 								$contentType = 'errorCode';
 								$content = $guaranteeStatus['error'];
 							} else {
+					    $this->getLogger(__METHOD__)->error('enter7', 'entry');	
 								$billingAddressId = $basket->customerInvoiceAddressId;
 								$address = $addressRepository->findAddressById($billingAddressId);
 								$content = $twig->render('Novalnet::PaymentForm.'. $paymentKey, [
